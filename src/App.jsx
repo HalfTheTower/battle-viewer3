@@ -73,6 +73,7 @@ export default function App() {
     setSelectedReport(item);
     setInput(item.raw);
     setResult([]);
+    // scroll to input on mobile could be added if desired
   };
 
   const deleteReport = async (id) => {
@@ -84,8 +85,8 @@ export default function App() {
 
   const changeReportType = async (id, type) => {
     await updateDoc(doc(db, "reports", id), { type });
-    setSelectedReport({...selectedReport, type});
-    loadSavedList();
+    setSelectedReport(prev => prev ? { ...prev, type } : null);
+    await loadSavedList();
   };
 
   const ignoreList = [
@@ -129,9 +130,21 @@ export default function App() {
     savedList.forEach(item => {
       const date = formatBattleDate(item.raw).split(" ")[0];
 
-      const timeLine = item.raw.split("\n").find(l=>l.includes("Real Time"));
-      const timeMatch = timeLine?.match(/(\d+)h (\d+)m (\d+)s/);
-      const seconds = timeMatch ? parseInt(timeMatch[1])*3600 + parseInt(timeMatch[2])*60 + parseInt(timeMatch[3]) : 0;
+      const timeLine = item.raw.split("\n").find(l => l.includes("Real Time"));
+
+      let h = 0, m = 0, s = 0;
+
+      if (timeLine) {
+        const hMatch = timeLine.match(/(\d+)h/);
+        const mMatch = timeLine.match(/(\d+)m/);
+        const sMatch = timeLine.match(/(\d+)s/);
+
+        h = hMatch ? parseInt(hMatch[1]) : 0;
+        m = mMatch ? parseInt(mMatch[1]) : 0;
+        s = sMatch ? parseInt(sMatch[1]) : 0;
+      }
+
+      const seconds = h * 3600 + m * 60 + s;
 
       const coinsLine = item.raw.split("\n").find(l=>l.includes("Coins earned"));
       const coins = parseNumber(coinsLine?.split("\t")[1]?.trim() || coinsLine?.split(":")[1]?.trim() || "0");
@@ -147,109 +160,236 @@ export default function App() {
     return Object.entries(stats).sort(([a],[b]) => new Date(b) - new Date(a));
   };
 
+  // helper: badge style
+  const badgeStyle = (type) => ({
+    background: tabColors[type] || "#ddd",
+    color: "white",
+    padding: "4px 8px",
+    borderRadius: "999px",
+    fontSize: "12px",
+    fontWeight: "600"
+  });
+
   return (
-    <div style={{padding:"20px"}}>
-      <h1>Battle Report</h1>
+    <div style={{padding:"18px", maxWidth:1200, margin:"0 auto", boxSizing:"border-box"}}>
+      {/* 내부 CSS (반응형) */}
+      <style>{`
+        .tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+        .tab-btn { padding:8px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
+        .controls { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+        .list-grid { display:grid; grid-template-columns: repeat(1, 1fr); gap:12px; }
+        .card { background:white; padding:12px; border-radius:10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border:1px solid #eee; }
+        .card .meta { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+        .card .summary { color:#555; font-size:13px; margin-top:6px; }
+        .input-area textarea { width:100%; min-height:160px; padding:10px; border-radius:8px; border:1px solid #ddd; resize:vertical; box-sizing:border-box; }
+        .btn { padding:10px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
+        .btn-primary { background:#4CAF50; color:white; }
+        .btn-danger { background:#ff4444; color:white; }
+        .small { font-size:13px; color:#666; }
+
+        @media(min-width:700px){
+          .list-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media(min-width:1100px){
+          .list-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+      `}</style>
+
+      <h1 style={{margin:"6px 0 14px 0"}}>Battle Report</h1>
 
       {/* 상단 탭 */}
-      <div style={{marginBottom:"10px"}}>
-        <button onClick={()=>setActiveTab("배틀리포트")} style={{marginRight:"6px"}}>배틀리포트</button>
-        <button onClick={()=>setActiveTab("날짜별 통계")} style={{marginRight:"6px"}}>날짜별 통계</button>
+      <div className="tabs">
+        <button
+          className="tab-btn"
+          onClick={()=>setActiveTab("배틀리포트")}
+          style={{ background: activeTab==="배틀리포트" ? "#222" : "#f0f0f0", color: activeTab==="배틀리포트" ? "#fff" : "#222" }}
+        >
+          배틀리포트
+        </button>
+        <button
+          className="tab-btn"
+          onClick={()=>setActiveTab("날짜별 통계")}
+          style={{ background: activeTab==="날짜별 통계" ? "#222" : "#f0f0f0", color: activeTab==="날짜별 통계" ? "#fff" : "#222" }}
+        >
+          날짜별 통계
+        </button>
       </div>
 
       {/* 배틀리포트 탭 */}
       {activeTab === "배틀리포트" && (
         <>
-        {/* 타입 필터 */}
-        <div style={{marginBottom:"10px"}}>
-          {Object.keys(tabColors).map(tab => (
-            <button key={tab} onClick={()=>setFilterType(tab)}
-              style={{
-                marginRight:"6px", padding:"6px 12px", border:"none",
-                borderRadius:"4px", cursor:"pointer", color:"white",
-                backgroundColor: filterType===tab ? tabColors[tab] : tabColors[tab]+"66"
-              }}>{tab}</button>
-          ))}
-        </div>
+          {/* 타입 필터 */}
+          <div className="controls" style={{marginBottom:12}}>
+            {Object.keys(tabColors).map(tab => (
+              <button
+                key={tab}
+                onClick={()=>setFilterType(tab)}
+                className="tab-btn"
+                style={{
+                  background: filterType===tab ? tabColors[tab] : `${tabColors[tab]}33`,
+                  color: filterType===tab ? "#fff" : "#000"
+                }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
 
-        {/* 저장 리포트 */}
-        <div style={{marginBottom:"20px"}}>
-          <h2>저장된 리포트</h2>
-          {savedList.filter(r=>filterType==="전체"||r.type===filterType).map(item=>{
-            const battleDate = formatBattleDate(item.raw);
-            const summary = extractSummary(item.raw);
-            const border = selectedReport?.id===item.id ? "2px solid #000" : "1px solid #ccc";
-            return (
-              <div key={item.id} style={{padding:"6px", borderBottom:border, cursor:"pointer", backgroundColor:tabColors[item.type]+"22"}} onClick={()=>loadReport(item)}>
-                {battleDate} {summary}
+          {/* 저장된 리포트 (카드 그리드) */}
+          <div style={{marginBottom:14}}>
+            <h2 style={{margin:"8px 0"}}>저장된 리포트</h2>
+            <div className="list-grid">
+              {savedList.filter(r=>filterType==="전체"||r.type===filterType).map(item=>{
+                const battleDate = formatBattleDate(item.raw);
+                const summary = extractSummary(item.raw);
+                const selected = selectedReport?.id === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className="card"
+                    onClick={()=>loadReport(item)}
+                    style={{ cursor:"pointer", outline: selected ? `2px solid #222` : "none" }}
+                  >
+                    <div className="meta">
+                      <div>
+                        <div style={{fontWeight:700}}>{battleDate}</div>
+                        <div className="small">{summary}</div>
+                      </div>
+                      <div style={{display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6}}>
+                        <div style={badgeStyle(item.type || "전체")}>{item.type || "전체"}</div>
+                        <div className="small" style={{color:"#888"}}>{new Date(item.timestamp || 0).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <div className="summary small" style={{marginTop:10, color:"#444"}}>
+                      {/* 보여주고 싶은 추가 정보(선택) */}
+                      {/* 예: Coins per hour / Tier */}
+                    </div>
+                  </div>
+                )
+              })}
+              {savedList.filter(r=>filterType==="전체"||r.type===filterType).length === 0 && (
+                <div className="card small">저장된 리포트가 없습니다.</div>
+              )}
+            </div>
+          </div>
+
+          {/* 선택 리포트: 타입 변경 + 삭제 (모바일 친화적으로 카드로) */}
+          {selectedReport && (
+            <div className="card" style={{marginBottom:12}}>
+              <div style={{display:"flex", gap:8, flexWrap:"wrap", alignItems:"center"}}>
+                <label style={{fontWeight:700}}>선택 리포트</label>
+                <select value={selectedReport.type} onChange={e=>changeReportType(selectedReport.id,e.target.value)}
+                  style={{padding:"8px", borderRadius:8, border:"1px solid #ddd"}}>
+                  {Object.keys(tabColors).map(tab => <option key={tab} value={tab}>{tab}</option>)}
+                </select>
+                <button className="btn btn-danger" onClick={()=>deleteReport(selectedReport.id)}>삭제</button>
               </div>
-            )
-          })}
-        </div>
+              <div style={{marginTop:8, whiteSpace:"pre-wrap", fontSize:13, color:"#444", maxHeight:160, overflow:"auto"}}>
+                {selectedReport.raw}
+              </div>
+            </div>
+          )}
 
-        {/* 선택 리포트 */}
-        {selectedReport && (
-          <div style={{marginBottom:"20px"}}>
-            <select value={selectedReport.type} onChange={e=>changeReportType(selectedReport.id,e.target.value)}
-              style={{padding:"6px", marginRight:"10px"}}>
-              {Object.keys(tabColors).map(tab => <option key={tab} value={tab}>{tab}</option>)}
-            </select>
-            <button onClick={()=>deleteReport(selectedReport.id)}
-              style={{padding:"6px 12px", backgroundColor:"#ff4444", color:"white", border:"none", borderRadius:"4px", cursor:"pointer"}}>
-              삭제
-            </button>
+          {/* 입력 & 버튼 그룹 */}
+          <div className="card input-area" style={{marginBottom:12}}>
+            <div style={{display:"flex", gap:8, flexWrap:"wrap", marginBottom:8}}>
+              <div style={{fontWeight:700}}>새 리포트 입력</div>
+              <div className="small" style={{color:"#666"}}>Battle Report 텍스트 전체를 붙여넣기</div>
+            </div>
+
+            <textarea value={input} placeholder="여기에 Battle Report 붙여넣기" onChange={e=>setInput(e.target.value)} />
+
+            <div style={{display:"flex", gap:8, marginTop:10, flexWrap:"wrap"}}>
+              <button className="btn btn-primary" onClick={analyze} style={{flex:1}}>분석</button>
+              <button className="btn" onClick={saveReport} style={{flex:1, background:"#4CAF50", color:"#fff"}}>저장</button>
+              <button className="btn" onClick={()=>{ setInput(""); setResult([]); setSelectedReport(null); }} style={{flex:1, background:"#eee"}}>초기화</button>
+            </div>
           </div>
-        )}
 
-        <textarea style={{width:"100%", height:"200px"}} value={input} placeholder="여기에 Battle Report 붙여넣기" onChange={e=>setInput(e.target.value)} />
-        <button onClick={analyze} style={{marginTop:"10px", width:"100%"}}>분석</button>
-        <button onClick={saveReport} style={{marginTop:"10px", padding:"10px", width:"100%", backgroundColor:"#4CAF50", color:"white"}}>저장</button>
+          {/* 분석 결과(파이차트) */}
+          {result.length>0 && result[0].name!=="총 대미지를 찾을 수 없음" && (
+            <div className="card" style={{marginBottom:12}}>
+              <h3 style={{margin:"0 0 8px 0"}}>데미지 비율</h3>
+              <div style={{width:"100%", height:260}}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={result.filter(d=>d.name!=="합계")} dataKey="percent" nameKey="name" outerRadius={80} label={false}>
+                      {result.filter(d=>d.name!=="합계").map((entry,index)=>(<Cell key={index} fill={COLORS[index%COLORS.length]}/>))}
+                    </Pie>
+                    <Tooltip formatter={v=>v.toFixed(2)+"%"} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
-        {/* 파이차트 */}
-        {result.length>0 && result[0].name!=="총 대미지를 찾을 수 없음" && (
-          <div style={{marginTop:"30px"}}>
-            <h2>데미지 비율</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={result.filter(d=>d.name!=="합계")} dataKey="percent" nameKey="name" outerRadius={120} label={false}>
-                  {result.filter(d=>d.name!=="합계").map((entry,index)=>(<Cell key={index} fill={COLORS[index%COLORS.length]}/>))}
-                </Pie>
-                <Tooltip formatter={v=>v.toFixed(2)+"%"}/>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* 데미지 목록 */}
-        {result.length>0 && (
-          <div style={{marginTop:"20px"}}>
-            <h2>데미지 목록</h2>
-            {result.filter(r=>r.name!=="합계").map((item,i)=>(<div key={i} style={{marginBottom:"6px"}}><b>{item.name}:</b> {item.percent.toFixed(2)}%</div>))}
-            <div style={{marginTop:"10px", fontWeight:"bold"}}>합계: {result[result.length-1].percent.toFixed(2)}%</div>
-          </div>
-        )}
+          {/* 데미지 목록 */}
+          {result.length>0 && (
+            <div className="card" style={{marginBottom:20}}>
+              <h3 style={{margin:"0 0 10px 0"}}>데미지 목록</h3>
+              <div style={{display:"grid", rowGap:8}}>
+                {result.filter(r=>r.name!=="합계").map((item,i)=>(
+                  <div key={i} style={{display:"flex", justifyContent:"space-between", gap:8, alignItems:"center"}}>
+                    <div style={{fontWeight:600}}>{item.name}</div>
+                    <div style={{color:"#333"}}>{item.percent.toFixed(2)}%</div>
+                  </div>
+                ))}
+                <div style={{borderTop:"1px dashed #eee", paddingTop:8, marginTop:6, fontWeight:700}}>
+                  합계: {result[result.length-1].percent.toFixed(2)}%
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
-      {/* 날짜별 통계 탭 */}
+      {/* 날짜별 통계 탭 (네가 이미 바꾼 카드형 유지) */}
       {activeTab === "날짜별 통계" && (
-        <div style={{marginTop:"20px"}}>
-          <h2>날짜별 통계 (24시간 기준)</h2>
+        <div style={{marginTop:8}}>
+          <h2 style={{margin:"6px 0 12px 0"}}>날짜별 통계 (24시간 기준)</h2>
+
           {dailyStats().map(([date, stat]) => {
-            const totalSeconds = Object.values(stat.typeSeconds).reduce((a,b)=>a+b,0);
-            const daySeconds = 24*3600;
-            const fullPercent = (totalSeconds/daySeconds*100).toFixed(2);
-            const wastePercent = (100 - fullPercent).toFixed(2);
+            const totalSecondsByType = Object.values(stat.typeSeconds).reduce((a,b)=>a+b,0);
+            const totalSecondsAll = stat.seconds || 0;
+            const usedSeconds = totalSecondsByType > 0 ? totalSecondsByType : totalSecondsAll;
+            const daySeconds = 24 * 3600;
+
+            const fullPercent = ((usedSeconds / daySeconds) * 100);
+            const fullPercentStr = fullPercent > 100 ? "100.00" : fullPercent.toFixed(2);
+            const wastePercent = Math.max(0, 100 - parseFloat(fullPercentStr)).toFixed(2);
 
             const typePercents = Object.fromEntries(
-              Object.entries(stat.typeSeconds).map(([k,v])=>[k, (v/daySeconds*100).toFixed(2)])
+              Object.entries(stat.typeSeconds).map(([k, v]) => [
+                k, (v / daySeconds * 100).toFixed(2)
+              ])
             );
 
             return (
-              <div key={date} style={{marginBottom:"6px"}}>
-                <b>{date}:</b> Coins: {formatNumber(stat.coins)}, Real Time: {(stat.seconds/3600).toFixed(2)}h, 전체: {fullPercent}% (파밍: {typePercents.파밍}%, 토너: {typePercents.토너}%, 등반: {typePercents.등반}%, 리롤: {typePercents.리롤}%), 낭비: {wastePercent}%
+              <div key={date} className="card" style={{marginBottom:12}}>
+                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, flexWrap:"wrap"}}>
+                  <div style={{fontWeight:700}}>{date}</div>
+                  <div style={{display:"flex", gap:8, alignItems:"center"}}>
+                    <div className="small">Real Time: <b>{(usedSeconds / 3600).toFixed(2)}h</b></div>
+                    <div style={badgeStyle(Object.keys(stat.typeSeconds).find(k=>stat.typeSeconds[k]>0) || "전체")}></div>
+                  </div>
+                </div>
+
+                <div style={{marginTop:8, display:"flex", gap:12, flexWrap:"wrap", alignItems:"center"}}>
+                  <div className="small">Coins: <b>{formatNumber(stat.coins)}</b></div>
+                  <div className="small">전체 사용률: <b>{fullPercentStr}%</b></div>
+                  <div className="small" style={{color:"#999"}}>{totalSecondsByType===0? "(타입 분류 없음: 전체 합계 사용)":""}</div>
+                </div>
+
+                <div style={{display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8, marginTop:10, fontSize:13}}>
+                  <div>파밍: <b>{typePercents.파밍}%</b></div>
+                  <div>토너: <b>{typePercents.토너}%</b></div>
+                  <div>등반: <b>{typePercents.등반}%</b></div>
+                  <div>리롤: <b>{typePercents.리롤}%</b></div>
+                </div>
+
+                <div style={{marginTop:8}} className="small">낭비 시간: <b>{wastePercent}%</b></div>
               </div>
-            )
+            );
           })}
         </div>
       )}
