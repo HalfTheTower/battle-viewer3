@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { parseNumber, formatNumber } from "./parser";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, LabelList } from "recharts";
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where,} from "firebase/firestore";
 import { db } from "./firebase";
 
 const TAB_COLORS = {
@@ -152,37 +152,71 @@ return (
   };
 
 const loadSavedList = async () => {
-  const snap = await getDocs(collection(db, "reports"));
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  // Firestore 쿼리로 7일 이내의 데이터만 가져오기
+  const q = query(collection(db, "reports"), where("timestamp", ">", oneWeekAgo.getTime()));
+  const snap = await getDocs(q);
+  
+  // 읽은 문서 개수 로그
+  console.log(`로드된 문서 개수: ${snap.size}`); // 로그 추가
+
+  // 데이터를 가져오고 정렬하기
   const arr = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
-    .filter(item => {
-      // Battle Date가 없으면 제외
-      const battleDate = formatBattleDate(item.raw);
-      if (!battleDate) return false;
-
-      // 현재 날짜로부터 7일 전 날짜를 구함
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-      // 배틀리포트의 날짜가 1주일 이내인지 확인
-      return new Date(battleDate.split(' ')[0]) >= oneWeekAgo;
-    })
     .sort((a, b) => parseBattleDate(b.raw) - parseBattleDate(a.raw)); // 날짜 내림차순 정렬
+  
+  // 번호를 붙여서 상태 업데이트
+  const arrWithNumbers = arr.map((item, index) => ({
+    ...item,
+    number: index + 1, // 번호를 1부터 붙임
+  }));
 
-  setSavedList(arr);
+  setSavedList(arrWithNumbers);
 };
 
 
-  const saveReport = async () => {
-    if (!input.trim()) return alert("입력값이 없어!");
-    if (savedList.some(r=>r.raw===input)) return alert("이미 등록됨!");
-    await addDoc(collection(db,"reports"), {raw:input,timestamp:Date.now(),type:"전체"});
-    setInput(""); loadSavedList();
-  };
+
+
+
+const saveReport = async () => {
+  if (!input.trim()) return alert("입력값이 없어!");
+  if (savedList.some(r => r.raw === input)) return alert("이미 등록됨!");
+  
+  console.log("Firestore에 리포트 저장 중..."); // 저장 시작 로그
+
+  await addDoc(collection(db, "reports"), { raw: input, timestamp: Date.now(), type: "전체" });
+
+  console.log("리포트 저장 완료!"); // 저장 완료 로그
+  
+  setInput("");
+  loadSavedList(); // 새로 저장한 리포트를 로드
+};
+
 
   const loadReport = (item) => { setSelectedReport(item); setResult(analyzeReport(item.raw)); setModalVisible(true); };
-  const deleteReport = async (id) => { if(confirm("삭제?")){await deleteDoc(doc(db,"reports",id)); setModalVisible(false); loadSavedList();}};
-  const changeReportType = async (id,type)=>{await updateDoc(doc(db,"reports",id),{type}); setSelectedReport(prev=>prev?{...prev,type}:null); loadSavedList();};
+const deleteReport = async (id) => {
+  if (confirm("삭제?")) {
+    console.log(`Firestore에서 리포트 삭제 중... 문서 ID: ${id}`); // 삭제 중 로그
+    
+    await deleteDoc(doc(db, "reports", id));
+    
+    console.log(`리포트 삭제 완료! 문서 ID: ${id}`); // 삭제 완료 로그
+    setModalVisible(false);
+    loadSavedList(); // 삭제 후 리스트 재로딩
+  }
+};
+const changeReportType = async (id, type) => {
+  console.log(`Firestore에서 리포트 타입 변경 중... 문서 ID: ${id}, 새 타입: ${type}`); // 타입 변경 중 로그
+  
+  await updateDoc(doc(db, "reports", id), { type });
+
+  console.log(`리포트 타입 변경 완료! 문서 ID: ${id}, 새 타입: ${type}`); // 타입 변경 완료 로그
+  
+  setSelectedReport(prev => (prev ? { ...prev, type } : null));
+  loadSavedList(); // 타입 변경 후 리스트 재로딩
+};
   const handleModalClick = (e)=>{ if(modalRef.current&&!modalRef.current.contains(e.target)){setModalVisible(false); setSelectedReport(null); setResult([]); }};
 
   const dailyStats = () => {
@@ -226,24 +260,37 @@ const loadSavedList = async () => {
             ))}
           </div>
 
-          <div style={{marginBottom:18}}>
-            <h2 style={{marginBottom:8}}>저장된 리포트</h2>
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              {savedList.filter(r=>filterType==='전체'||r.type===filterType).map(item=>{
-                const battleDate = formatBattleDate(item.raw) || "날짜 없음";
-                const summary = extractSummary(item.raw);
-                return (
-                  <div key={item.id} onClick={()=>loadReport(item)} style={{padding:12,borderRadius:10,background:TAB_COLORS[item.type]+'22',cursor:'pointer'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <div style={{fontWeight:700}}>{battleDate}</div>
-                      <div style={{fontSize:12,color:'#555'}}>{item.type}</div>
-                    </div>
-                    <div style={{marginTop:6,color:'#444'}}>{summary}</div>
-                  </div>
-                );
-              })}
+<div style={{ marginBottom: 18 }}>
+  <h2 style={{ marginBottom: 8 }}>저장된 리포트</h2>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    {savedList.filter(r => filterType === '전체' || r.type === filterType).map((item) => {
+      const battleDate = formatBattleDate(item.raw) || "날짜 없음";
+      const summary = extractSummary(item.raw);
+      return (
+        <div
+          key={item.id}
+          onClick={() => loadReport(item)}
+          style={{
+            padding: 12,
+            borderRadius: 10,
+            background: TAB_COLORS[item.type] + '22',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* 번호 추가 */}
+            <div style={{ fontWeight: 700 }}>
+              {`[${item.number}]`} {battleDate} {/* 번호와 날짜 표시 */}
             </div>
+            <div style={{ fontSize: 12, color: '#555' }}>{item.type}</div>
           </div>
+          <div style={{ marginTop: 6, color: '#444' }}>{summary}</div>
+        </div>
+      );
+    })}
+  </div>
+</div>
+
         </div>
       )}
 
