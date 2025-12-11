@@ -1,4 +1,18 @@
 // battleConstants.js
+export const KILLED_BY_LABELS = {
+  Basic: "기본",
+  Fast: "신속",
+  Tank: "탱커",
+  Ranged: "원거리",
+  Boss: "보스",
+  Protector: "수호자",
+  Vampire: "벰파",
+  Scatter: "스케터",
+  Ray: "레이",
+  Saboteur: "방해꾼",
+  Commander: "사령관",
+  Overcharge: "에누리",
+};
 
 export const KILLED_BY_COLORS = {
   Basic: "#ff4d4d",
@@ -48,6 +62,7 @@ export const SHORT_NAMES = {
   innerlandmine: '지뢰플',
   swamp:'독늪',
   smartmissile:'스미',
+  deathwave:'죽파',
 };
 
 export const IGNORE_LIST = [
@@ -57,3 +72,25 @@ export const IGNORE_LIST = [
 ];
 
 export const PAGE_SIZE = 10;
+
+export const DAMAGE_COLORS = {
+  orb: "#fabadaff",
+  chainlightning: "#2c3135ff",
+  blackhole: "#5d5574ff",
+  electrons: "#89f7edd3",
+  projectiles: "#e9afdaff",
+  deathray: "#fd9c8bff",
+  innerlandmine: "#ca8b77ff",
+  swamp: "#4d7253ff",
+  smartmissile: "#9ef1a2ff",
+  deathwave: "#9c7373ff",
+};
+
+export const UNIT_LEVEL = {
+  K: 1,
+  M: 2,
+  B: 3,
+  T: 4,
+  q: 5,
+  Q: 6,
+};
