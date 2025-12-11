@@ -67,6 +67,17 @@ const formatTime = (seconds) => {
 /* ===================== 메인 ===================== */
 
 export default function App() {
+  const uiBtn = {
+  padding: "8px 14px",
+  borderRadius: 8,
+  border: "none",
+  fontWeight: 700,
+  fontSize: 13,
+  cursor: "pointer",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+  transition: "0.15s",
+};
+
   const [input, setInput] = useState("");
   const [savedList, setSavedList] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -76,7 +87,14 @@ export default function App() {
   const [dailyStatList, setDailyStatList] = useState([]);
   const [hasMore, setHasMore] = useState(true);
   const [dayRange, setDayRange] = useState(30); // 7 | 30 | "all"
-  
+  const [openMemos, setOpenMemos] = useState({});
+const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
+
+useEffect(() => {
+  const resize = () => setIsMobile(window.innerWidth < 480);
+  window.addEventListener("resize", resize);
+  return () => window.removeEventListener("resize", resize);
+}, []);
 
   const modalRef = useRef(null);
   const lastVisibleRef = useRef(null);
@@ -479,8 +497,10 @@ const cellsPerHour =
 
   /* ✅ 자동 스크롤 감지 */
 
-  const lastItemRef = useCallback((node) => {
-    if (!hasMore) return;
+const lastItemRef = useCallback((node) => {
+  // ✅ 전체 탭일 때만 무한 스크롤 허용
+  if (!hasMore || filterType !== "전체") return;
+
 
     if (observerRef.current) observerRef.current.disconnect();
 
@@ -537,7 +557,36 @@ const cellsPerHour =
 
   return (
     <div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
-      <h1 style={{textAlign:"center",marginBottom:16}}>Battle Report</h1>
+
+<div style={{ textAlign: "center", marginBottom: 22 }}>
+  <div
+    style={{
+      fontSize: 36,
+      fontWeight: 900,
+      letterSpacing: "-0.8px",
+
+      // ✅ 그라데이션 대신 고급 네이비 단색
+      color: "#0b1c3d",
+
+      textShadow: "0 4px 16px rgba(0,0,0,0.25)"
+    }}
+  >
+    Tower Log
+  </div>
+
+  <div
+    style={{
+      fontSize: 13,
+      marginTop: 6,
+      color: "#777"
+    }}
+  >
+    Battle Records & Growth Analytics
+  </div>
+</div>
+
+
+
 
       <div style={{display:"flex",gap:8,marginBottom:12}}>
         {["배틀리포트","날짜별통계"].map(t=>(
@@ -563,44 +612,117 @@ const cellsPerHour =
 
       {activeTab==="배틀리포트" && (
         <>
-          <textarea
-            value={input}
-            onChange={e=>setInput(e.target.value)}
-            placeholder="Battle Report 붙여넣기"
-            style={{width:'100%',height:100,padding:10,borderRadius:10}}
-          />
+<textarea
+  value={input}
+  onChange={e=>setInput(e.target.value)}
+  placeholder="Battle Report 붙여넣기"
+  style={{
+    width: "100%",
+    height: 120,
+    padding: 12,
+    borderRadius: 10,
+    border: "1px solid #ddd",
+    background: "#fafafa",
+    resize: "none",            // ✅ 크기 조절 방지
+    fontSize: 13,
+    lineHeight: 1.4,
+    fontFamily: "monospace",
+    boxShadow: "inset 0 1px 4px rgba(0,0,0,0.08)",
+    boxSizing: "border-box" // ✅ 이게 핵심
+  }}
+/>
 
-          <div style={{display:'flex',gap:10,marginTop:10}}>
-            {/* 분석 버튼은 숨김 상태 */}
-            <button
-              onClick={saveReport}
-              style={{background:'#4CAF50',color:'white',fontWeight:700}}
-            >
-              저장
-            </button>
-          </div>
+<div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    marginTop: 10
+  }}
+>
+  {/* ✅ 왼쪽: 저장 버튼 */}
+  <button
+    onClick={saveReport}
+    style={{
+      background: "#4CAF50",
+      color: "white",
+      fontWeight: 700,
+      padding: "8px 14px",
+      borderRadius: 8,
+      border: "none"
+    }}
+  >
+    저장
+  </button>
 
-          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:12}}>
-            {Object.keys(TAB_COLORS).map(tab=>(
-              <button key={tab}
-                onClick={()=>setFilterType(tab)}
-                style={{
-                  padding:'6px 12px',
-                  border:'none',
-                  borderRadius:6,
-                  background:filterType===tab?TAB_COLORS[tab]:TAB_COLORS[tab]+'55',
-                  color:'white',
-                  fontWeight:700
-                }}>
-                {tab}
-              </button>
-            ))}
-          </div>
+  {/* ✅ 가운데 공간 자동 밀기 */}
+  <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+    {Object.keys(TAB_COLORS).map(tab => (
+      <button
+        key={tab}
+        onClick={() => {
+          setFilterType(tab);
+
+          if (tab === "전체") {
+            setSavedList([]);
+            lastVisibleRef.current = null;
+            setHasMore(true);
+            loadSavedList(false);
+          }
+        }}
+style={{
+  padding: isMobile ? "5px 8px" : "6px 12px",
+  border: "none",
+  borderRadius: 6,
+  background: filterType === tab
+    ? TAB_COLORS[tab]
+    : TAB_COLORS[tab] + "55",
+  color: "white",
+  fontWeight: 700,
+  fontSize: isMobile ? 11 : 13,   // ✅ 모바일 글자 줄이기
+  whiteSpace: "nowrap"           // ✅ '전\n체' 방지 핵심
+}}
+
+      >
+        {tab}
+      </button>
+    ))}
+
+{/* ✅ 낭비 버튼 (완전 수정본) */}
+<button
+  onClick={() => setFilterType("낭비")}
+  style={{
+    padding: isMobile ? "5px 8px" : "6px 12px",
+    border: "none",
+    borderRadius: 6,
+    background:
+      filterType === "낭비"
+        ? (TAB_COLORS["낭비"] || "#999")
+        : (TAB_COLORS["낭비"] || "#999") + "55",
+    color: "white",
+    fontWeight: 700,
+    fontSize: isMobile ? 11 : 13,
+    whiteSpace: "nowrap",
+    WebkitTextSizeAdjust: "100%",
+  }}
+>
+  낭비
+</button>
+
+  </div>
+</div>
+
 
 <div style={{ marginTop: 16 }}>
-  {savedList
-    .filter(r => filterType === "전체" || r.type === filterType)
-    .map((item, idx, arr) => {
+  {
+  savedList.filter(r => {
+  if (filterType === "전체") return true;
+
+  if (filterType === "낭비") {
+    return !["파밍", "토너", "등반", "리롤"].includes(r.type);
+  }
+
+  return r.type === filterType;
+}).map((item, idx, arr) => {
       // ✅ 여기서 timeStr 직접 계산
       const raw = item.raw;
       const timeLine =
@@ -655,24 +777,66 @@ const cellsPerHour =
             {extractSummary(item.raw)}
           </div>
 
-          {item.memo && (
-            <div
-              style={{
-                marginTop: 6,
-                padding: "6px 8px",
-                background: "rgba(255, 255, 255, 0.95)",
-                borderRadius: 6,
-                fontSize: 13,
-                color: "#686868e5",
-                fontStyle: "italic",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {item.memo.length > 200
-                ? item.memo.slice(0, 200) + "..."
-                : item.memo}
-            </div>
-          )}
+{item.memo && (() => {
+  const isOpen = openMemos[item.id];
+  const lineCount = item.memo.split("\n").length;
+  const isLong = lineCount > 3;
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      
+      {/* ✅ 메모 본문 (접히는 영역만 clamp 적용) */}
+      <div
+        style={{
+          padding: "6px 8px",
+          background: "rgba(255, 255, 255, 0.95)",
+          borderRadius: 6,
+          fontSize: 13,
+          color: "#686868e5",
+          fontStyle: "italic",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          lineHeight: 1.4,
+          overflow: "hidden",
+          display: "-webkit-box",
+          WebkitLineClamp: !isOpen && isLong ? 3 : 999,
+          WebkitBoxOrient: "vertical",
+        }}
+      >
+        {item.memo}
+      </div>
+
+      {/* ✅ ✅ ✅ 더보기 버튼은 "밖"으로 분리해야 절대 안 잘림 */}
+      {isLong && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpenMemos(prev => ({
+              ...prev,
+              [item.id]: !prev[item.id]
+            }));
+          }}
+          style={{
+            marginTop: 4,
+            fontSize: 12,
+            fontWeight: 700,
+            color: "#0077b6",
+            cursor: "pointer",
+            userSelect: "none"
+          }}
+        >
+          {isOpen ? "접기 ▲" : "더보기 ▶"}
+        </div>
+      )}
+    </div>
+  );
+})()}
+
+
+
+
+
+
         </div>
       );
     })}
@@ -869,64 +1033,112 @@ style={{
 
             <h2>전투 리포트</h2>
 
-            <textarea
-              value={selectedReport.raw}
-              readOnly
-              style={{width:'100%',height:140,marginTop:10}}
-            />
+<textarea
+  value={selectedReport.raw}
+  readOnly
+  style={{
+    width: "100%",
+    height: 160,
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 10,
+    border: "1px solid #ddd",
+    resize: "none",
+    background: "#f7f7f7",
+    fontFamily: "monospace",
+    fontSize: 12,
+    lineHeight: 1.4
+  }}
+/>
 
-            <textarea
-              value={selectedReport.memo || ""}
-              onChange={e=>setSelectedReport(
-                prev=>({...prev, memo:e.target.value})
-              )}
-              placeholder="메모 수정"
-              style={{
-                width:'100%',
-                height:80,
-                marginTop:10,
-                padding:10
-              }}
-            />
+
+<textarea
+  value={selectedReport.memo || ""}
+  onChange={e=>setSelectedReport(prev=>({...prev, memo:e.target.value}))}
+  placeholder="메모 수정"
+  style={{
+    width: "100%",
+    height: 90,
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 10,
+    border: "1px solid #ddd",
+    resize: "none",
+    fontSize: 13
+  }}
+/>
+
 
             <div style={{display:'flex',gap:10,marginTop:12}}>
-              <select
-                value={selectedReport.type}
-                onChange={async e=>{
-                  const newType = e.target.value;
-                  await updateDoc(doc(db,"reports",selectedReport.id),{ type:newType });
-                  setSelectedReport(prev=>({...prev,type:newType}));
-                  loadSavedList(false);
-                }}
-              >
+<select
+  value={selectedReport.type}
+  onChange={async e => {
+    const newType = e.target.value;
+    await updateDoc(doc(db,"reports",selectedReport.id),{ type:newType });
+    setSelectedReport(prev=>({...prev,type:newType}));
+    loadSavedList(false);
+  }}
+  style={{
+    padding: "8px 12px",
+    borderRadius: 8,
+    border: "1px solid #ccc",
+    fontWeight: 700,
+    background: "#f9f9f9",
+    cursor: "pointer",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
+  }}
+>
+
                 {Object.keys(TAB_COLORS).map(tab=>(
                   <option key={tab} value={tab}>{tab}</option>
                 ))}
               </select>
 
-              <button
-                onClick={async ()=>{
-                  if(!confirm("삭제할까?")) return;
-                  await deleteDoc(doc(db,"reports",selectedReport.id));
-                  setModalVisible(false);
-                  loadSavedList(false);
-                }}
-                style={{background:'#ff4444',color:'white'}}
-              >
-                삭제
-              </button>
+<button
+  onClick={async () => {
+    if (!confirm("삭제할까?")) return;
+    await deleteDoc(doc(db, "reports", selectedReport.id));
+    setModalVisible(false);
+    loadSavedList(false);
+  }}
+  style={{
+    ...uiBtn,
+    background: "linear-gradient(135deg,#ff5252,#c62828)",
+    color: "white"
+  }}
+>
+  삭제
+</button>
 
-              <button
-                onClick={async ()=>{
-                  await updateDoc(doc(db,"reports",selectedReport.id),{
-                    memo:selectedReport.memo || ""
-                  });
-                  alert("메모 저장됨");
-                }}
-                style={{background:'#4CAF50',color:'white'}}
-              >
-                메모 저장
-              </button>
+
+<button
+  onClick={async () => {
+    await updateDoc(doc(db, "reports", selectedReport.id), {
+      memo: selectedReport.memo || ""
+    });
+
+    setSavedList(prev =>
+      prev.map(item =>
+        item.id === selectedReport.id
+          ? { ...item, memo: selectedReport.memo }
+          : item
+      )
+    );
+
+    setModalVisible(false);
+    setSelectedReport(null);
+  }}
+  style={{
+    ...uiBtn,
+    background: "linear-gradient(135deg,#42a5f5,#1565c0)",
+    color: "white"
+  }}
+>
+  메모 저장
+</button>
+
+
+
             </div>
           </div>
         </div>
