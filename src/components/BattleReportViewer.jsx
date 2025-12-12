@@ -123,7 +123,7 @@ export default function BattleReportViewer({
                 {/* 왼쪽: ① + 날짜 + [아이콘] Ray */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {/* 번호 */}
-                  <span>{indexLabel(idx + 1)}
+                  <span style={{ fontSize:14}}>{indexLabel(idx + 1)}
                   </span>
 
                   {/* 날짜 (조금 작게) */}

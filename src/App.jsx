@@ -887,6 +887,18 @@ const rerollValue = parseNumber(
 
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
+      {/* 비용계산 */}
+      <div style={{
+        color: '#adadadff',
+        fontSize: 12,
+        borderRadius: 6,
+        fontWeight:500,
+        textAlign: "center",
+        }}>
+      읽기: {globalReads.toLocaleString()}회 /
+      비용: {Math.round(readCostKRW).toLocaleString()}원
+      </div>
+
       {/* 타이틀 */}
       <div style={{ textAlign: "center", marginBottom: 22 }}>
         <div
@@ -900,22 +912,7 @@ const rerollValue = parseNumber(
         >
           Tower Log
         </div>
-<div style={{
-  position: "fixed",
-  top: 10,
-  right: 10,
-  padding: "6px 10px",
-  background: "rgba(0,0,0,0.7)",
-  color: "white",
-  fontSize: 12,
-  borderRadius: 6,
-  zIndex: 9999
-}}>
-Reads(Local): {readCount}
-Reads(Global): {globalReads}
-Cost(Global): {(globalReads * 0.0000006).toFixed(4)} USD
-(≈ {Math.round(readCostKRW).toLocaleString()} 원)
-</div>
+
 
         
 
