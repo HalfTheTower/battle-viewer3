@@ -3,15 +3,15 @@ export const KILLED_BY_LABELS = {
   Basic: "기본",
   Fast: "신속",
   Tank: "탱커",
-  Ranged: "원거리",
+  Ranged: "범위",
   Boss: "보스",
-  Protector: "수호자",
+  Protector: "수호",
   Vampire: "벰파",
-  Scatter: "스케터",
+  Scatter: "분열",
   Ray: "레이",
-  Saboteur: "방해꾼",
-  Commander: "사령관",
-  Overcharge: "에누리",
+  Saboteur: "방해",
+  Commander: "사령",
+  Overcharge: "누리",
 };
 
 export const KILLED_BY_COLORS = {
