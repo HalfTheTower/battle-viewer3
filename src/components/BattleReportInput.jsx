@@ -7,7 +7,9 @@ export default function BattleReportInput({
   saveReport,
   filterType,
   onFilterClick,
-  isMobile
+  isMobile,
+  saveType,
+  setSaveType
 }) {
   return (
     <div>
@@ -40,16 +42,39 @@ export default function BattleReportInput({
           marginTop: 10
         }}
       >
+      {/*🔥 저장 버튼 왼쪽에 타입 선택 추가 */}
+      <select
+        value={saveType}
+        onChange={(e) => setSaveType(e.target.value)}
+        style={{
+          padding: "5px 5px",
+          borderRadius: 8,
+          border: "1px solid #ccc",
+          fontWeight: 700,
+          fontSize: isMobile ? 10 : 13,
+          background: "#fff",
+          marginRight: 8
+        }}
+      >
+        <option value="전체">전체</option>
+        <option value="파밍">파밍</option>
+        <option value="토너">토너</option>
+        <option value="등반">등반</option>
+        <option value="리롤">리롤</option>
+      </select>
+
+
         {/* 왼쪽: 저장 버튼 */}
         <button
           onClick={saveReport}
           style={{
-            background: "#4CAF50",
-            color: "white",
-            fontWeight: 700,
-            padding: "8px 14px",
             borderRadius: 8,
-            border: "none"
+            border: "1px solid #ccc",
+            background: "#fff",
+            fontWeight: 700,
+            padding: "5px 5px",
+            borderRadius: 8,
+            fontSize: isMobile ? 10 : 13,
           }}
         >
           저장
@@ -60,7 +85,9 @@ export default function BattleReportInput({
           style={{
             marginLeft: "auto",
             display: "flex",
-            gap: 6
+            gap: isMobile ? 1 : 6,
+            fontSize: isMobile ? 10 : 13,
+
           }}
         >
           {Object.keys(TAB_COLORS).map((tab) => (

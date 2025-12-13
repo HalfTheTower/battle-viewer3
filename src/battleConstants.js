@@ -45,11 +45,12 @@ export const KILLED_BY_SHAPES = {
 };
 
 export const TAB_COLORS = {
-  전체: "#8884d8",
   파밍: "#36a2eb",
   토너: "#ff6384",
   등반: "#4bc0c0",
   리롤: "#ffcd56",
+  전체: "#8884d8",
+
 };
 
 export const SHORT_NAMES = {

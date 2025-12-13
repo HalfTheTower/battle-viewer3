@@ -172,10 +172,15 @@ export default function App() {
   const [hasMore, setHasMore] = useState(true);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
-  const [readCount, setReadCount] = useState(
-  Number(localStorage.getItem("readCount") || 0)
-);
-  const readCostKRW = Math.round(readCount * 0.0000006 * 1471.9);
+  const [saveType, setSaveType] = useState("전체");
+
+//   const [readCount, setReadCount] = useState(
+    
+//   Number(localStorage.getItem("readCount") || 0)
+// );
+  const [globalReads, setGlobalReads] = useState(0);
+
+  const readCostKRW = Math.round(globalReads * 0.0000006 * 1471.9);
 // Firestore 전역 readCount 증가
 
 async function addGlobalReads(value) {
@@ -186,7 +191,6 @@ async function addGlobalReads(value) {
 }
 
 
-const [globalReads, setGlobalReads] = useState(0);
 
 const loadGlobalReads = async () => {
   const ref = doc(db, "systemMeta", "readStats");
@@ -594,9 +598,9 @@ const rerollValue = parseStat(rerollLine);
     await addDoc(collection(db, "reports"), {
       raw: input,
       timestamp: Date.now(),
-      type: "전체",
+      type: saveType,   // 🔥 선택한 타입
       memo: "",
-      meta: { date, coins, seconds}
+      meta: { date, coins, seconds }
     });
 
     // 날짜별 통계 반영
@@ -621,7 +625,13 @@ if (snap.exists()) {
 }
 
     setInput("");
-    loadSavedList(false);
+    // 🔥 리스트 초기화
+    setSavedList([]);
+    lastVisibleRef.current = null;
+    setHasMore(true);
+
+    // 🔥 현재 필터 기준으로 즉시 재로드
+    loadSavedList(filterType, false);
   };
 
 
@@ -662,11 +672,11 @@ const snap = await getDocs(q);
 // 🔥 Firestore 실제 읽기 비용만큼 증가
 const readUsed = snap.docs.length;
 
-setReadCount(prev => {
-  const newVal = prev + readUsed;
-  localStorage.setItem("readCount", newVal);
-  return newVal;
-});
+// setReadCount(prev => {
+//   const newVal = prev + readUsed;
+//   localStorage.setItem("readCount", newVal);
+//   return newVal;
+// });
 await addGlobalReads(readUsed);
 setGlobalReads(prev => prev + readUsed);
 
@@ -960,6 +970,8 @@ const rerollValue = parseNumber(
             filterType={filterType}
             onFilterClick={handleFilterClick}
             isMobile={isMobile}
+            saveType={saveType}
+            setSaveType={setSaveType}
           />
 
           {/* 리스트 뷰어 */}
