@@ -764,11 +764,11 @@ const lastItemRef = useCallback((node) => {
 // 읽은 문서 개수
 const readUsed = snap.docs.length;
 
-setReadCount(prev => {
-  const newVal = prev + readUsed;
-  localStorage.setItem("readCount", newVal);
-  return newVal;
-});
+// setReadCount(prev => {
+//   const newVal = prev + readUsed;
+//   localStorage.setItem("readCount", newVal);
+//   return newVal;
+// });
 await addGlobalReads(readUsed);
 setGlobalReads(prev => prev + readUsed);
 
@@ -805,11 +805,11 @@ setGlobalReads(prev => prev + readUsed);
 const snap = await getDocs(collection(db, "reports"));
 
 // 🔥 읽기 비용 집계
-setReadCount(prev => {
-  const newVal = prev + snap.docs.length;
-  localStorage.setItem("readCount", newVal);
-  return newVal;
-});
+// setReadCount(prev => {
+//   const newVal = prev + snap.docs.length;
+//   localStorage.setItem("readCount", newVal);
+//   return newVal;
+// });
 await addGlobalReads(readUsed);
 setGlobalReads(prev => prev + readUsed);
 
