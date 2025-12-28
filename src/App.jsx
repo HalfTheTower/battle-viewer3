@@ -791,105 +791,92 @@ setGlobalReads(prev => prev + readUsed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, dayRange]);
 
-  /* 🔁 날짜별 통계 재생성 (기존 기능 완전 복원) */
-  const rebuildDailyStats = async () => {
-    if (
-      !confirm(
-        "⚠️ 기존 모든 리포트를 날짜별 통계로 재집계할까? (1회 실행용)"
-      )
-    )
-      return;
+const rebuildDailyStats = async () => {
+  if (!confirm("⚠️ 기존 모든 리포트를 날짜별 통계로 재집계할까? (1회 실행용)")) return;
 
-    console.log("🔁 날짜별 통계 재집계 시작...");
+  console.log("🔁 날짜별 통계 재집계 시작...");
 
-const snap = await getDocs(collection(db, "reports"));
+  // reports 전체 읽기
+  const snap = await getDocs(collection(db, "reports"));
 
-// 🔥 읽기 비용 집계
-// setReadCount(prev => {
-//   const newVal = prev + snap.docs.length;
-//   localStorage.setItem("readCount", newVal);
-//   return newVal;
-// });
-await addGlobalReads(readUsed);
-setGlobalReads(prev => prev + readUsed);
+  // 🔥 읽기 비용 집계 (전역 카운트만 사용)
+  const readUsed = snap.docs.length;
+  await addGlobalReads(readUsed);            // Firestore 전역 카운트 증가
+  setGlobalReads(prev => prev + readUsed);   // 화면에 표시되는 값도 같이 증가
 
-    
-    const stats = {};
+  const stats = {};
 
-snap.docs.forEach((d) => {
-  const item = d.data();
-  if (!item.raw) return;
+  snap.docs.forEach((d) => {
+    const item = d.data();
+    if (!item.raw) return;
 
-  const formatted = formatBattleDate(item.raw);
-  if (!formatted) return;
+    const formatted = formatBattleDate(item.raw);
+    if (!formatted) return;
 
-  const date = formatted.split(" ")[0];
+    const date = formatted.split(" ")[0];
 
-  // Real Time
-  const timeLine = item.raw
-    .split("\n")
-    .find((l) => l.includes("Real Time"));
-  const { h, m, s } = extractTime(timeLine);
-  const seconds = h * 3600 + m * 60 + s;
+    // Real Time
+    const timeLine = item.raw
+      .split("\n")
+      .find((l) => l.includes("Real Time"));
+    const { h, m, s } = extractTime(timeLine);
+    const seconds = h * 3600 + m * 60 + s;
 
-  // Coins
-const coinsLine = item.raw
-  .split("\n")
-  .find((l) => l.includes("Coins earned"));
-const coins = parseNumber(
-  coinsLine?.split("\t")[1] ||
-    coinsLine?.split(":")[1] ||
-    "0"
-);
+    // Coins
+    const coinsLine = item.raw
+      .split("\n")
+      .find((l) => l.includes("Coins earned"));
+    const coins = parseNumber(
+      coinsLine?.split("\t")[1] ||
+        coinsLine?.split(":")[1] ||
+        "0"
+    );
 
-// Cells
-const cellsLine = item.raw
-  .split("\n")
-  .find((l) => l.includes("Cells Earned"));
-const cellsValue = parseNumber(
-  cellsLine?.split("\t")[1] ||
-    cellsLine?.split(":")[1] ||
-    "0"
-);
+    // Cells
+    const cellsLine = item.raw
+      .split("\n")
+      .find((l) => l.includes("Cells Earned"));
+    const cellsValue = parseNumber(
+      cellsLine?.split("\t")[1] ||
+        cellsLine?.split(":")[1] ||
+        "0"
+    );
 
-// Reroll Shards
-const rerollLine = item.raw
-  .split("\n")
-  .find((l) => l.includes("Reroll Shards Earned"));
-const rerollValue = parseNumber(
-  rerollLine?.split("\t")[1] ||
-    rerollLine?.split(":")[1] ||
-    "0"
-);
+    // Reroll Shards
+    const rerollLine = item.raw
+      .split("\n")
+      .find((l) => l.includes("Reroll Shards Earned"));
+    const rerollValue = parseNumber(
+      rerollLine?.split("\t")[1] ||
+        rerollLine?.split(":")[1] ||
+        "0"
+    );
 
-  // 누적 저장
-  if (!stats[date]) {
-    stats[date] = {
-      totalCoins: 0,
-      totalSeconds: 0,
-      totalCells: 0,
-      totalReroll: 0,
-    };
-  }
-
-  stats[date].totalCoins += coins;
-  stats[date].totalSeconds += seconds;
-  stats[date].totalCells += cellsValue;
-  stats[date].totalReroll += rerollValue;
-});
-
-
-    for (const date of Object.keys(stats)) {
-      await setDoc(doc(db, "dailyStats", date), stats[date]);
-      console.log(`✅ ${date} 통계 저장 완료`, stats[date]);
+    // 누적 저장
+    if (!stats[date]) {
+      stats[date] = {
+        totalCoins: 0,
+        totalSeconds: 0,
+        totalCells: 0,
+        totalReroll: 0,
+      };
     }
 
-    alert("✅ 기존 데이터 날짜별 통계 재작성 완료!");
-    loadDailyStats();
-  };
+    stats[date].totalCoins += coins;
+    stats[date].totalSeconds += seconds;
+    stats[date].totalCells += cellsValue;
+    stats[date].totalReroll += rerollValue;
+  });
 
+  // 날짜별로 dailyStats에 저장
+  for (const date of Object.keys(stats)) {
+    await setDoc(doc(db, "dailyStats", date), stats[date]);
+    console.log(`✅ ${date} 통계 저장 완료`, stats[date]);
+  }
 
-
+  alert("✅ 기존 데이터 날짜별 통계 재작성 완료!");
+  loadDailyStats();  // 최신 통계 다시 로딩
+};
 
   /* ==========================================================
                             UI
